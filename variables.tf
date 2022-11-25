@@ -1,8 +1,26 @@
-# VPC Input Variables
+# Input Variables for for pet adotion project infrastructure
+# AWS Region
+variable "aws_region" {
+  description = "Region in which AWS Resources to be created"
+  type        = string
+  default     = "eu-west-2"
+}
+# Project Team
+variable "project-team" {
+  description = "Team Assigned the project (can be  used as a prefix)"
+  type        = string
+  default     = "EU2"
+}
+# Business Division (Pet Adoption Dvisison)
+variable "business_divsion" {
+  description = "Business Division in the large organization this Infrastructure belongs"
+  type        = string
+  default     = "PET"
+}
 
 # VPC Name
 variable "vpc_name" {
-  description = "VPC PetAdopt"
+  description = "VPC for Pet Adoption Project"
   type        = string
   default     = "myvpc"
 }
@@ -81,6 +99,28 @@ variable "vpc_priv_sub2" {
   type        = string
   default     = "10.0.4.0/24"
 }
+
+# VPC Database Subnets
+variable "vpc_database_subnets" {
+  description = "VPC Database Subnets"
+  type        = list(string)
+  default     = ["10.0.151.0/24", "10.0.152.0/24"]
+}
+
+# VPC Create Database Subnet Group (True / False)
+variable "vpc_create_database_subnet_group" {
+  description = "VPC Create Database Subnet Group"
+  type        = bool
+  default     = true
+}
+
+# VPC Create Database Subnet Route Table (True or False)
+variable "vpc_create_database_subnet_route_table" {
+  description = "VPC Create Database Subnet Route Table"
+  type        = bool
+  default     = true
+}
+
 
 # VPC Enable NAT Gateway (True or False) 
 variable "vpc_enable_nat_gateway" {
