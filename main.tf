@@ -142,7 +142,6 @@ resource "aws_security_group" "PCJEU2_Ansible_SG" {
     to_port     = var.ssh_port
     protocol    = "tcp"
     cidr_blocks = [var.all_access]
-
   }
 
   egress {
@@ -241,8 +240,8 @@ resource "aws_security_group" "PCJEU2_Jenkins_SG" {
   }
 }
 
-#Create Security Group for Sonaqube
-resource "aws_security_group" "PCJEU2_Sonaqube_SG" {
+#Create Security Group for Sonarqube
+resource "aws_security_group" "PCJEU2_Sonarqube_SG" {
   name        = "${local.name}-Sonaqube"
   description = "Allow Inbound traffic"
   vpc_id      = aws_vpc.PCJEU2_VPC.id
@@ -279,9 +278,22 @@ resource "aws_security_group" "PCJEU2_Sonaqube_SG" {
   }
 
   tags = {
-    Name = "${local.name}-Sonaqube_SG"
+    Name = "${local.name}-Sonarqube_SG"
   }
 }
 
+resource "aws_instance" "Sonarqube_Server" {
+  ami                         = "ami-08c40ec9ead489470" #Ubuntu
+  instance_type               = "t2.medium"
+  key_name                    = "capeuteam2"
+  vpc_security_group_ids      = ["${aws_security_group.PCJEU2_Sonarqube_SG.id}"]
+  associate_public_ip_address = true
+  subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
+  user_data                   = file("userdata.tpl")
 
+
+  tags = {
+    Name = "${local.name}-Sonarqube_Server"
+  }
+}
 
