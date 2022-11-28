@@ -297,3 +297,38 @@ resource "aws_instance" "Sonarqube_Server" {
   }
 }
 
+# Create Docker Host 
+resource "aws_instance" "PCJEU2_Docker_Host" {
+  ami                    = "ami-023cd3f0d10fb8a9c"
+  associate_public_ip_address = true
+  instance_type          = "t2.medium"
+  key_name               =  "capeuteam2"
+  subnet_id              = aws_subnet.PCJEU2_Pub_SN1.id
+  vpc_security_group_ids = [aws_security_group.PCJEU2_Docker_SG.id]
+  user_data = <<-EOF
+#!/bin/bash
+sudo yum update -y
+sudo yum upgrade -y
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo yum install docker-ce -y
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user
+sudo su
+echo admin123 | passwd ec2-user --stdin
+sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config
+sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sudo service sshd reload
+sudo chmod -R 700 .ssh/
+sudo chmod 600 .ssh/authorize_Keys
+echo "license_key: licence key" | sudo tee -a /etc/newrelic-infra.yml
+sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://downloads.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
+sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
+sudo yum install newrelic-infra -y
+EOF
+tags = {
+      NAME = "${local.name}-Docker_Host"
+  }
+}
+
