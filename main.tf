@@ -298,14 +298,14 @@ resource "aws_instance" "Sonarqube_Server" {
 }
 
 # Create Docker Host 
-esource "aws_instance" "PCJEU2_Docker_Host" {
-  ami                    = "ami-08c40ec9ead489470"
+resource "aws_instance" "PCJEU2_Docker_Host" {
+  ami                    = "ami-023cd3f0d10fb8a9c"
   associate_public_ip_address = true
   instance_type          = "t2.medium"
   key_name               =  "capeuteam2"
   subnet_id              = aws_subnet.PCJEU2_Pub_SN1.id
   vpc_security_group_ids = [aws_security_group.PCJEU2_Docker_SG.id]
-    user_data = <<-EOF
+  user_data = <<-EOF
 #!/bin/bash
 sudo yum update -y
 sudo yum upgrade -y
@@ -328,7 +328,7 @@ sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
 sudo yum install newrelic-infra -y
 EOF
 tags = {
-      NAME = "PCJEU2_Docker_Host"
+      NAME = "${local.name}-Docker_Host"
+  }
 }
 
-}
