@@ -299,13 +299,13 @@ resource "aws_instance" "Sonarqube_Server" {
 
 # Create Docker Host 
 resource "aws_instance" "PCJEU2_Docker_Host" {
-  ami                    = "ami-023cd3f0d10fb8a9c"
+  ami                         = "ami-023cd3f0d10fb8a9c"
   associate_public_ip_address = true
-  instance_type          = "t2.medium"
-  key_name               =  "capeuteam2"
-  subnet_id              = aws_subnet.PCJEU2_Pub_SN1.id
-  vpc_security_group_ids = [aws_security_group.PCJEU2_Docker_SG.id]
-  user_data = <<-EOF
+  instance_type               = "t2.medium"
+  key_name                    = "capeuteam2"
+  subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
+  vpc_security_group_ids      = [aws_security_group.PCJEU2_Docker_SG.id]
+  user_data                   = <<-EOF
 #!/bin/bash
 sudo yum update -y
 sudo yum upgrade -y
@@ -327,8 +327,35 @@ sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://downloads.newrelic.com
 sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
 sudo yum install newrelic-infra -y
 EOF
-tags = {
-      NAME = "${local.name}-Docker_Host"
+  tags = {
+    NAME = "${local.name}-Docker_Host"
   }
 }
 
+
+# Database 
+resource "aws_db_instance" "PCJEU2_db" {
+  allocated_storage = 10
+  engine               = "mysql"
+  engine_version       = "5.7"
+  instance_class       = "db.t2.micro"
+  multi_az             = true 
+  # db_name              = var.db_name
+  username             = "admin"
+  password             = "admin123"
+  parameter_group_name = "default.mysql5.7"
+  skip_final_snapshot  = true
+  # vpc_security_group_ids = [aws_security_group.capeu2-Back-sg.id] ----Is this needed?
+  db_subnet_group_name = aws_db_subnet_group.pcjeu2_db_subnet_group.id
+}
+
+#Database Subnet Group 
+
+resource "aws_db_subnet_group" "pcjeu2_db_subnet_group" {
+  name       = "pcjeu2_db_subnet_group"
+  subnet_ids = [aws_subnet.PCJEU2_Priv_SN1.id, aws_subnet.PCJEU2_Priv_SN2.id]
+
+  tags = {
+    Name = "pcjeu2_db_subnet_group"
+  }
+} 
