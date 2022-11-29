@@ -332,3 +332,57 @@ tags = {
   }
 }
 
+# Create EC2 Instance for Ansible Node
+resource "aws_instance" "PCJEU2_Ansible_Node" {
+  ami                    = "ami-023cd3f0d10fb8a9c"
+  associate_public_ip_address = true
+  instance_type          = "t2.medium"
+  key_name               =  "capeuteam2"
+  subnet_id              = aws_subnet.PCJEU2_Pub_SN1.id
+  vpc_security_group_ids = [aws_security_group.PCJEU2_Ansible_SG.id]
+  user_data              = <<-EOF
+#!/bin/bash
+sudo yum update -y
+sudo yum install python3 python3-pip -y
+pip install ansible --user
+sudo chown ec2-user:ec2-user /etc/ansible
+sudo yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/sshpass-1.06-2.el7.x86_64.rpm
+sudo yum install sshpass -y
+echo "license_key: eu01xx28fc9087c229cd6428cc55448e87b8NRAL" | sudo tee -a /etc/newrelic-infra.yml
+sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
+sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
+sudo yum install newrelic-infra -y
+sudo su
+echo admin123 | passwd ec2-user --stdin
+echo "ec2-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sudo service sshd reload
+sudo chmod -R 700 .ssh/
+sudo chown -R ec2-user:ec2-user .ssh/
+sudo su - ec2-user -c "ssh-keygen -f ~/.ssh/capeuteam2 -t rsa -N''"
+sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config
+sudo su - ec2-user -c 'sshpass -p "Admin123@" ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@${aws_instance.PCJEU2_Docker_Host.public_ip} -p 22"
+ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@localhost -p 22
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo yum install docker-ce -y
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user
+cd /etc
+sudo chown ec2-user:ec2-user hosts
+cat <<EOT>> /etc/ansible/hosts
+localhost ansible_connection=local
+[docker_host]
+${aws_instance.PCJEU2_Docker_Host.public_ip} ansible_ssh_private_key_file=/home/ec2-user/.ssh/capeuteam2
+EOT
+sudo mkdir /opt/docker
+sudo chown -R ec2-user:ec2-user /opt/docker
+sudo chmod -R 700 /opt/docker
+touch /opt/docker/Dockerfile
+cat <<EOT>> /opt/docker/Dockerfile
+EOF
+tags = {
+      NAME = "${local.name}-Ansible_Node"
+  }
+}
