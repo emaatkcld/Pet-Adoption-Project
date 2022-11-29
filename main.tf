@@ -282,8 +282,13 @@ resource "aws_security_group" "PCJEU2_Sonarqube_SG" {
   }
 }
 
+resource "aws_key_pair" "capeuteam2" {
+  key_name   = "capeuteam2"
+  public_key = file("~/keypair/capeuteam2.pub")
+}
+
 resource "aws_instance" "Sonarqube_Server" {
-  ami                         = "ami-08c40ec9ead489470" #Ubuntu
+  ami                         = "ami-0f540e9f488cfa27d" #Ubuntu
   instance_type               = "t2.medium"
   key_name                    = "capeuteam2"
   vpc_security_group_ids      = ["${aws_security_group.PCJEU2_Sonarqube_SG.id}"]
@@ -329,6 +334,21 @@ sudo yum install newrelic-infra -y
 EOF
   tags = {
     NAME = "${local.name}-Docker_Host"
+  }
+}
+
+#create Jenkins server
+resource "aws_instance" "jenkins_instance" {
+  ami                         = "ami-023cd3f0d10fb8a9c"
+  instance_type               = "t2.micro"
+  key_name                    = "capeuteam2"
+  subnet_id                   = aws_subnet.PCJEU2_Pub_SN2.id
+  vpc_security_group_ids      = [aws_security_group.PCJEU2_Jenkins_SG.id]
+  associate_public_ip_address = true
+  user_data                   = file("userdata2.tpl")
+
+  tags = {
+    Name = "${local.name}-jenkins_instance"
   }
 }
 
@@ -404,7 +424,6 @@ resource "aws_db_instance" "PCJEU2_db" {
 }
 
 #Database Subnet Group 
-
 resource "aws_db_subnet_group" "pcjeu2_db_subnet_group" {
   name       = "pcjeu2_db_subnet_group"
   subnet_ids = [aws_subnet.PCJEU2_Priv_SN1.id, aws_subnet.PCJEU2_Priv_SN2.id]
