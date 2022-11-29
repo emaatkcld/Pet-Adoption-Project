@@ -282,8 +282,13 @@ resource "aws_security_group" "PCJEU2_Sonarqube_SG" {
   }
 }
 
+resource "aws_key_pair" "capeuteam2" {
+  key_name   = "capeuteam2"
+  public_key = file("~/keypair/capeuteam2.pub")
+}
+
 resource "aws_instance" "Sonarqube_Server" {
-  ami                         = "ami-08c40ec9ead489470" #Ubuntu
+  ami                         = "ami-0f540e9f488cfa27d" #Ubuntu
   instance_type               = "t2.medium"
   key_name                    = "capeuteam2"
   vpc_security_group_ids      = ["${aws_security_group.PCJEU2_Sonarqube_SG.id}"]
@@ -299,13 +304,13 @@ resource "aws_instance" "Sonarqube_Server" {
 
 # Create Docker Host 
 resource "aws_instance" "PCJEU2_Docker_Host" {
-  ami                    = "ami-023cd3f0d10fb8a9c"
+  ami                         = "ami-023cd3f0d10fb8a9c"
   associate_public_ip_address = true
-  instance_type          = "t2.medium"
-  key_name               =  "capeuteam2"
-  subnet_id              = aws_subnet.PCJEU2_Pub_SN1.id
-  vpc_security_group_ids = [aws_security_group.PCJEU2_Docker_SG.id]
-  user_data = <<-EOF
+  instance_type               = "t2.medium"
+  key_name                    = "capeuteam2"
+  subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
+  vpc_security_group_ids      = [aws_security_group.PCJEU2_Docker_SG.id]
+  user_data                   = <<-EOF
 #!/bin/bash
 sudo yum update -y
 sudo yum upgrade -y
@@ -327,8 +332,22 @@ sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://downloads.newrelic.com
 sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
 sudo yum install newrelic-infra -y
 EOF
-tags = {
-      NAME = "${local.name}-Docker_Host"
+  tags = {
+    NAME = "${local.name}-Docker_Host"
   }
 }
 
+#create Jenkins server
+resource "aws_instance" "jenkins_instance" {
+  ami                         = "ami-023cd3f0d10fb8a9c"
+  instance_type               = "t2.micro"
+  key_name                    = "capeuteam2"
+  subnet_id                   = aws_subnet.PCJEU2_Pub_SN2.id
+  vpc_security_group_ids      = [aws_security_group.PCJEU2_Jenkins_SG.id]
+  associate_public_ip_address = true
+  user_data                   = file("userdata2.tpl")
+
+  tags = {
+    Name = "${local.name}-jenkins_instance"
+  }
+}
