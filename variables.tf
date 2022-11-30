@@ -150,3 +150,26 @@ variable "ssh_port" {
   description = "this port allows ssh access"
 }
 
+# Database 
+
+variable "database" {
+    default = "capeu2db"
+} 
+
+variable "db_username" {
+    default = "admin"
+} 
+
+variable "db_passwd" {
+    default = "admin123"
+}
+
+#Database ports
+variable "SSH_port" {
+  default     = 22
+  description = "this port allows http access"
+}
+variable "MYSQL_port" {
+  default     = 3308
+  description = "this port allows proxy access"
+}
