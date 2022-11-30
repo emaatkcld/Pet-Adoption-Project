@@ -280,6 +280,42 @@ resource "aws_security_group" "PCJEU2_Sonarqube_SG" {
   tags = {
     Name = "${local.name}-Sonarqube_SG"
   }
+} 
+
+#Backend SG - Database 
+
+resource "aws_security_group" "DB_Backend_SG" {
+  name        = "allow_tls"
+  description = "Allow TLS inbound traffic"
+  vpc_id      = aws_vpc.PCJEU2_VPC.id
+
+  ingress {
+    description      = "SSH_port"
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = [var.all_access]
+  }  
+
+  ingress {
+    description      = "MYSQL_port"
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = [var.all_access]
+  }
+
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = [var.all_access]
+  }
+
+  tags = {
+    Name = "DB_Backend_SG"
+  }
 }
 
 resource "aws_key_pair" "capeuteam2" {
@@ -414,12 +450,12 @@ resource "aws_db_instance" "PCJEU2_db" {
   engine_version       = "5.7"
   instance_class       = "db.t2.micro"
   multi_az             = true 
-  # db_name              = var.db_name
-  username             = "admin"
-  password             = "admin123"
+  name              = var.database
+  username             = var.db_username
+  password             = var.db_passwd
   parameter_group_name = "default.mysql5.7"
   skip_final_snapshot  = true
-  # vpc_security_group_ids = [aws_security_group.capeu2-Back-sg.id] ----Is this needed?
+  vpc_security_group_ids = [aws_security_group.DB_Backend_SG.id]
   db_subnet_group_name = aws_db_subnet_group.pcjeu2_db_subnet_group.id
 }
 
@@ -431,4 +467,4 @@ resource "aws_db_subnet_group" "pcjeu2_db_subnet_group" {
   tags = {
     Name = "pcjeu2_db_subnet_group"
   }
-} 
+}  
