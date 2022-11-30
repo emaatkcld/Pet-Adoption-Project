@@ -287,20 +287,12 @@ resource "aws_security_group" "PCJEU2_Sonarqube_SG" {
 resource "aws_security_group" "DB_Backend_SG" {
   name        = "allow_tls"
   description = "Allow TLS inbound traffic"
-  vpc_id      = aws_vpc.PCJEU2_VPC.id
-
-  ingress {
-    description      = "SSH_port"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = [var.all_access]
-  }  
+  vpc_id      = aws_vpc.PCJEU2_VPC.id 
 
   ingress {
     description      = "MYSQL_port"
-    from_port        = 22
-    to_port          = 22
+    from_port        = 3306
+    to_port          = 3306
     protocol         = "tcp"
     cidr_blocks      = [var.all_access]
   }

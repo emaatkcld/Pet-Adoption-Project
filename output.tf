@@ -1,11 +1,15 @@
-output "public_IP_address_of_Docker_host-public-ip" {
+output "Docker_host-public-ip" {
   value = aws_instance.PCJEU2_Docker_Host.public_ip
 }
 
-output "my-docker_host-id" {
-  value = aws_instance.PCJEU2_Docker_Host.id
+output "Ansible_host-ip" {
+  value = aws_instance.PCJEU2_Ansible_Node.public_ip
 }
 
-output "docker-host-private-ip" {
-  value = aws_instance.PCJEU2_Docker_Host.private_ip
+output "Sonaqube-public-ip" {
+  value = aws_instance.Sonarqube_Server.public_ip
+}
+
+output "Jenkins-public-ip" {
+  value = aws_instance.jenkins_instance.public_ip
 }
