@@ -355,7 +355,7 @@ sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/
 sudo service sshd reload
 sudo chmod -R 700 .ssh/
 sudo chmod 600 .ssh/authorize_Keys
-echo "license_key: licence key" | sudo tee -a /etc/newrelic-infra.yml
+echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/newrelic-infra.yml
 sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://downloads.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
 sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
 sudo yum install newrelic-infra -y
@@ -396,7 +396,7 @@ pip install ansible --user
 sudo chown ec2-user:ec2-user /etc/ansible
 sudo yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/sshpass-1.06-2.el7.x86_64.rpm
 sudo yum install sshpass -y
-echo "license_key: eu01xx28fc9087c229cd6428cc55448e87b8NRAL" | sudo tee -a /etc/newrelic-infra.yml
+echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/newrelic-infra.yml
 sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
 sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
 sudo yum install newrelic-infra -y
@@ -511,7 +511,7 @@ cat << EOT > /opt/docker/newrelic.yml
                      --pid=host \
                      -v "/:/host:ro" \
                      -v "/var/run/docker.sock:/var/run/docker.sock" \
-                     -e NRIA_LICENSE_KEY=eu01xx4fc443b5ef136bb617380505f93e08NRAL \
+                     -e NRIA_LICENSE_KEY=eu01xxbca018499adedd74cacda9d3d13e7dNRAL \
                      newrelic/infrastructure:latest
 EOT
 EOF
