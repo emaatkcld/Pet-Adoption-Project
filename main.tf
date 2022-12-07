@@ -544,4 +544,10 @@ resource "aws_db_subnet_group" "pcjeu2_db_subnet_group" {
   tags = {
     Name = "pcjeu2_db_subnet_group"
   }
-}  
+} 
+# Create AMI from Docker Host
+resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
+  name               = "PCJEU2-Docker-ami"
+  source_instance_id = aws_instance.PCJEU2_Docker_Host.id 
+  snapshot_without_reboot = true
+}
