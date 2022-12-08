@@ -551,3 +551,25 @@ resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
   source_instance_id = aws_instance.PCJEU2_Docker_Host.id 
   snapshot_without_reboot = true
 }
+#Create Target Group for Load Balancer
+resource "aws_lb_target_group" "PCJEU2-TG" {
+  name     = "PCJEU2-TG"
+  port     = "8080"
+  vpc_id   = aws_vpc.PCJEU2_VPC.id 
+  health_check {
+    healthy_threshold    = 3
+    unhealthy_threshold  = 5
+    interval             = 60
+    timeout              = 5
+    path                 = "/"
+  }
+}
+#Creat Target Group Attachment
+resource "aws_lb_target_group_attachment" "PCJEU2-tg-attch" {
+  target_group_arn = aws_lb_target_group.PCJEU2-TG.arn
+  target_id        = aws_instance.PCJEU2_Docker_Host.id
+  port             = 8080
+}
+
+
+
