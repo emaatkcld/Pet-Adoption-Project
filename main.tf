@@ -280,33 +280,73 @@ resource "aws_security_group" "PCJEU2_Sonarqube_SG" {
   tags = {
     Name = "${local.name}-Sonarqube_SG"
   }
-} 
+}
 
-#Backend SG - Database 
-
-resource "aws_security_group" "DB_Backend_SG" {
-  name        = "allow_tls"
-  description = "Allow TLS inbound traffic"
-  vpc_id      = aws_vpc.PCJEU2_VPC.id 
+#Create Security Group for LC ALB
+resource "aws_security_group" "PCJEU2_LC_SG" {
+  name        = "${local.name}-LC"
+  description = "Allow Inbound traffic"
+  vpc_id      = aws_vpc.PCJEU2_VPC.id
 
   ingress {
-    description      = "MYSQL_port"
-    from_port        = 3306
-    to_port          = 3306
-    protocol         = "tcp"
-    cidr_blocks      = [var.all_access]
+    description = "Allow inbound traffic"
+    from_port   = var.ssh_port
+    to_port     = var.ssh_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
   }
 
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.proxy_port
+    to_port     = var.proxy_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.http_port
+    to_port     = var.http_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
 
   egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = [var.all_access]
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.all_access]
   }
 
   tags = {
-    Name = "DB_Backend_SG"
+    Name = "${local.name}-LC_SG"
+  }
+}
+
+#Backend SG - Database 
+resource "aws_security_group" "DB_Backend_SG" {
+  name        = "allow_tls"
+  description = "Allow TLS inbound traffic"
+  vpc_id      = aws_vpc.PCJEU2_VPC.id
+
+  ingress {
+    description = "MYSQL_port"
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.all_access]
+  }
+
+  tags = {
+    Name = "${local.name}-DB_Backend_SG"
   }
 }
 
@@ -323,7 +363,6 @@ resource "aws_instance" "Sonarqube_Server" {
   associate_public_ip_address = true
   subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
   user_data                   = file("userdata.tpl")
-
 
   tags = {
     Name = "${local.name}-Sonarqube_Server"
@@ -382,13 +421,13 @@ resource "aws_instance" "jenkins_instance" {
 
 # Create EC2 Instance for Ansible Node
 resource "aws_instance" "PCJEU2_Ansible_Node" {
-  ami                    = "ami-023cd3f0d10fb8a9c"
+  ami                         = "ami-023cd3f0d10fb8a9c"
   associate_public_ip_address = true
-  instance_type          = "t2.medium"
-  key_name               =  "capeuteam2"
-  subnet_id              = aws_subnet.PCJEU2_Pub_SN1.id
-  vpc_security_group_ids = [aws_security_group.PCJEU2_Ansible_SG.id]
-  user_data              = <<-EOF
+  instance_type               = "t2.medium"
+  key_name                    = "capeuteam2"
+  subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
+  vpc_security_group_ids      = [aws_security_group.PCJEU2_Ansible_SG.id]
+  user_data                   = <<-EOF
 #!/bin/bash
 sudo yum update -y
 sudo yum install python3 python3-pip -y
@@ -515,25 +554,25 @@ cat << EOT > /opt/docker/newrelic.yml
                      newrelic/infrastructure:latest
 EOT
 EOF
-tags = {
-      NAME = "${local.name}-Ansible_Node"
+  tags = {
+    NAME = "${local.name}-Ansible_Node"
   }
 }
 
 # Database 
 resource "aws_db_instance" "PCJEU2_db" {
-  allocated_storage = 10
-  engine               = "mysql"
-  engine_version       = "5.7"
-  instance_class       = "db.t2.micro"
-  multi_az             = true 
-  name              = var.database
-  username             = var.db_username
-  password             = var.db_passwd
-  parameter_group_name = "default.mysql5.7"
-  skip_final_snapshot  = true
+  allocated_storage      = 10
+  engine                 = "mysql"
+  engine_version         = "5.7"
+  instance_class         = "db.t2.micro"
+  multi_az               = true
+  name                   = var.database
+  username               = var.db_username
+  password               = var.db_passwd
+  parameter_group_name   = "default.mysql5.7"
+  skip_final_snapshot    = true
   vpc_security_group_ids = [aws_security_group.DB_Backend_SG.id]
-  db_subnet_group_name = aws_db_subnet_group.pcjeu2_db_subnet_group.id
+  db_subnet_group_name   = aws_db_subnet_group.pcjeu2_db_subnet_group.id
 }
 
 #Database Subnet Group 
@@ -544,24 +583,23 @@ resource "aws_db_subnet_group" "pcjeu2_db_subnet_group" {
   tags = {
     Name = "pcjeu2_db_subnet_group"
   }
-} 
+}
 # Create AMI from Docker Host
 resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
-  name               = "PCJEU2-Docker-ami"
-  source_instance_id = aws_instance.PCJEU2_Docker_Host.id 
+  name                    = "PCJEU2-Docker-ami"
+  source_instance_id      = aws_instance.PCJEU2_Docker_Host.id
   snapshot_without_reboot = true
 }
 #Create Target Group for Load Balancer
 resource "aws_lb_target_group" "PCJEU2-TG" {
-  name     = "PCJEU2-TG"
-  port     = "8080"
-  vpc_id   = aws_vpc.PCJEU2_VPC.id 
+  name   = "PCJEU2-TG"
+  port   = "8080"
+  vpc_id = aws_vpc.PCJEU2_VPC.id
   health_check {
-    healthy_threshold    = 3
-    unhealthy_threshold  = 5
-    interval             = 60
-    timeout              = 5
-    path                 = "/"
+    healthy_threshold   = 3
+    unhealthy_threshold = 5
+    interval            = 60
+    timeout             = 5
   }
 }
 #Creat Target Group Attachment
@@ -571,5 +609,20 @@ resource "aws_lb_target_group_attachment" "PCJEU2-tg-attch" {
   port             = 8080
 }
 
+#Lunch Configuration Template
+resource "aws_launch_template" "PCJEU2_LC" {
+  name                   = "${local.name}-LC"
+  image_id               = aws_instance.PCJEU2_Docker_Host.id
+  instance_type          = var.instance_type
+  key_name               = "capeuteam2"
+  vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
+  associate_public_ip_address = true
 
+  tags = {
+    Name = "${local.name}-LC"
+  }
 
+  depends_on = [
+    aws_security_group.PCJEU2_Docker_Host
+  ]
+}
