@@ -282,8 +282,49 @@ resource "aws_security_group" "PCJEU2_Sonarqube_SG" {
   }
 }
 
-#Backend SG - Database 
+#Create Security Group for LC ALB
+resource "aws_security_group" "PCJEU2_LC_SG" {
+  name        = "${local.name}-LC"
+  description = "Allow Inbound traffic"
+  vpc_id      = aws_vpc.PCJEU2_VPC.id
 
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.ssh_port
+    to_port     = var.ssh_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.proxy_port
+    to_port     = var.proxy_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.http_port
+    to_port     = var.http_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.all_access]
+  }
+
+  tags = {
+    Name = "${local.name}-LC_SG"
+  }
+}
+
+#Backend SG - Database 
 resource "aws_security_group" "DB_Backend_SG" {
   name        = "allow_tls"
   description = "Allow TLS inbound traffic"
@@ -297,7 +338,6 @@ resource "aws_security_group" "DB_Backend_SG" {
     cidr_blocks = [var.all_access]
   }
 
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -306,7 +346,7 @@ resource "aws_security_group" "DB_Backend_SG" {
   }
 
   tags = {
-    Name = "DB_Backend_SG"
+    Name = "${local.name}-DB_Backend_SG"
   }
 }
 
@@ -323,7 +363,6 @@ resource "aws_instance" "Sonarqube_Server" {
   associate_public_ip_address = true
   subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
   user_data                   = file("userdata.tpl")
-
 
   tags = {
     Name = "${local.name}-Sonarqube_Server"
@@ -520,6 +559,50 @@ EOF
   }
 }
 
+# Database 
+resource "aws_db_instance" "PCJEU2_db" {
+  allocated_storage      = 10
+  engine                 = "mysql"
+  engine_version         = "5.7"
+  instance_class         = "db.t2.micro"
+  multi_az               = true
+  name                   = var.database
+  username               = var.db_username
+  password               = var.db_passwd
+  parameter_group_name   = "default.mysql5.7"
+  skip_final_snapshot    = true
+  vpc_security_group_ids = [aws_security_group.DB_Backend_SG.id]
+  db_subnet_group_name   = aws_db_subnet_group.pcjeu2_db_subnet_group.id
+}
+
+#Database Subnet Group 
+resource "aws_db_subnet_group" "pcjeu2_db_subnet_group" {
+  name       = "pcjeu2_db_subnet_group"
+  subnet_ids = [aws_subnet.PCJEU2_Priv_SN1.id, aws_subnet.PCJEU2_Priv_SN2.id]
+
+  tags = {
+    Name = "pcjeu2_db_subnet_group"
+  }
+}
+# Create AMI from Docker Host
+resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
+  name                    = "PCJEU2-Docker-ami"
+  source_instance_id      = aws_instance.PCJEU2_Docker_Host.id
+  snapshot_without_reboot = true
+}
+#Create Target Group for Load Balancer
+resource "aws_lb_target_group" "PCJEU2-TG" {
+  name   = "PCJEU2-TG"
+  port   = "8080"
+  vpc_id = aws_vpc.PCJEU2_VPC.id
+  health_check {
+    healthy_threshold   = 3
+    unhealthy_threshold = 5
+    interval            = 60
+    timeout             = 5
+  }
+}
+
 # # Database 
 # resource "aws_db_instance" "PCJEU2_db" {
 #   allocated_storage      = 10
@@ -573,5 +656,20 @@ EOF
 #   port             = 8080
 # }
 
+#Lunch Configuration Template
+resource "aws_launch_template" "PCJEU2_LC" {
+  name                   = "${local.name}-LC"
+  image_id               = aws_instance.PCJEU2_Docker_Host.id
+  instance_type          = var.instance_type
+  key_name               = "capeuteam2"
+  vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
+  associate_public_ip_address = true
 
+  tags = {
+    Name = "${local.name}-LC"
+  }
 
+  depends_on = [
+    aws_security_group.PCJEU2_Docker_Host
+  ]
+}

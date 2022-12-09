@@ -173,3 +173,10 @@ variable "MYSQL_port" {
   default     = 3308
   description = "this port allows proxy access"
 }
+
+# LC Instance Type
+variable "instance_type" {
+  description = "EC2 Instance Type"
+  type        = string
+  default     = "t2.medium"
+}
