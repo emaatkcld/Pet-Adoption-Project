@@ -324,53 +324,7 @@ resource "aws_security_group" "PCJEU2_LC_SG" {
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #Backend SG - Database 
-
 resource "aws_security_group" "DB_Backend_SG" {
   name        = "allow_tls"
   description = "Allow TLS inbound traffic"
@@ -383,7 +337,6 @@ resource "aws_security_group" "DB_Backend_SG" {
     protocol    = "tcp"
     cidr_blocks = [var.all_access]
   }
-
 
   egress {
     from_port   = 0
@@ -410,7 +363,6 @@ resource "aws_instance" "Sonarqube_Server" {
   associate_public_ip_address = true
   subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
   user_data                   = file("userdata.tpl")
-
 
   tags = {
     Name = "${local.name}-Sonarqube_Server"
@@ -648,7 +600,6 @@ resource "aws_lb_target_group" "PCJEU2-TG" {
     unhealthy_threshold = 5
     interval            = 60
     timeout             = 5
-    path                = "/"
   }
 }
 #Creat Target Group Attachment
@@ -661,43 +612,17 @@ resource "aws_lb_target_group_attachment" "PCJEU2-tg-attch" {
 #Lunch Configuration Template
 resource "aws_launch_template" "PCJEU2_LC" {
   name                   = "${local.name}-LC"
-  image_id               = data.aws_ami.amzlinux2.id
+  image_id               = aws_instance.PCJEU2_Docker_Host.id
   instance_type          = var.instance_type
   key_name               = "capeuteam2"
   vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
-  #associate_public_ip_address = true
-  #user_data                   = 
+  associate_public_ip_address = true
 
   tags = {
     Name = "${local.name}-LC"
   }
 
   depends_on = [
-    aws_security_group.PCJEU2_LC_SG
+    aws_security_group.PCJEU2_Docker_Host
   ]
 }
-
-# Get latest AMI ID for Amazon Linux2 OS for LC
-data "aws_ami" "amzlinux2" {
-  most_recent = true
-  owners      = ["amazon"]
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-gp2"]
-  }
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
-  }
-}
-
-
-
