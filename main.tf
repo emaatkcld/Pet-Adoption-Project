@@ -657,14 +657,13 @@ resource "aws_lb_target_group" "PCJEU2-TG" {
 # }
 
 #Lunch Configuration Template
-resource "aws_launch_template" "PCJEU2_LC" {
+resource "aws_launch_configuration" "PCJEU2_LC" {
   name                   = "${local.name}-LC"
   image_id               = aws_instance.PCJEU2_Docker_Host.id
   instance_type          = var.instance_type
   key_name               = "capeuteam2"
   vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
   associate_public_ip_address = true
-  
 
   tags = {
     Name = "${local.name}-LC"
