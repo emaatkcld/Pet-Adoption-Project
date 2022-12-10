@@ -664,6 +664,7 @@ resource "aws_launch_template" "PCJEU2_LC" {
   key_name               = "capeuteam2"
   vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
   associate_public_ip_address = true
+  
 
   tags = {
     Name = "${local.name}-LC"
@@ -672,4 +673,20 @@ resource "aws_launch_template" "PCJEU2_LC" {
   depends_on = [
     aws_security_group.PCJEU2_Docker_Host
   ]
+}
+
+# Creating the Application Load Balancer
+resource "aws_lb" "PCJEU2_lb" {
+  name                       = "PCJEU2-lb"
+  internal                   = false
+  load_balancer_type         = "application"
+  security_groups            = [aws_security_group.PCJEU2_Docker_SG.id]
+  subnets                    = [aws_subnet.PCJEU2_Pub_SN1.id, aws_subnet.PCJEU2_Pub_SN2.id]
+  enable_deletion_protection = false
+
+
+
+  tags = {
+    name = "PCJEU2-lb"
+  }
 }
