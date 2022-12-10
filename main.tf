@@ -663,6 +663,7 @@ resource "aws_launch_template" "PCJEU2_LC" {
   instance_type          = var.instance_type
   key_name               = "capeuteam2"
   vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
+  associate_public_ip_address = yes
   
 
   tags = {
