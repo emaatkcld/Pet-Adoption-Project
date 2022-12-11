@@ -439,15 +439,15 @@ echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/
 sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
 sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
 sudo yum install newrelic-infra -y
-sudo su
+sudo -i
 echo admin123 | passwd ec2-user --stdin
 echo "ec2-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
 sudo service sshd reload
 sudo chmod -R 700 .ssh/
 sudo chown -R ec2-user:ec2-user .ssh/
-sudo su - ec2-user -c "ssh-keygen -f ~/.ssh/capeuteam2 -t rsa -N''"
-sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config
+sudo su - ec2-user -c "ssh-keygen -f ~/.ssh/capeuteam2 -t rsa -N ''"
+sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config'
 sudo su - ec2-user -c 'sshpass -p "Admin123@" ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@${aws_instance.PCJEU2_Docker_Host.public_ip} -p 22"
 ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@localhost -p 22
 sudo yum install -y yum-utils
@@ -616,13 +616,22 @@ resource "aws_launch_template" "PCJEU2_LC" {
   instance_type          = var.instance_type
   key_name               = "capeuteam2"
   vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
-  associate_public_ip_address = true
+  #associate_public_ip_address = true
 
   tags = {
     Name = "${local.name}-LC"
   }
 
   depends_on = [
-    aws_security_group.PCJEU2_Docker_Host
+    aws_security_group.PCJEU2_Docker_SG
   ]
+}
+#time to delay resource
+resource "time_sleep" "wait_60_seconds" {
+  depends_on = [aws_instance.PCJEU2_Docker_Host]
+  create_duration = "60s"
+}
+
+resource "null_resource" "next" {
+  depends_on = [time_sleep.wait_60_seconds]
 }
