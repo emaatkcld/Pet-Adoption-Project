@@ -439,7 +439,7 @@ echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/
 sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
 sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
 sudo yum install newrelic-infra -y
-sudo su
+sudo -i
 echo admin123 | passwd ec2-user --stdin
 echo "ec2-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
@@ -633,6 +633,7 @@ resource "aws_lb_target_group" "PCJEU2-TG" {
 #   name                    = "PCJEU2-Docker-ami"
 #   source_instance_id      = aws_instance.PCJEU2_Docker_Host.id
 #   snapshot_without_reboot = true
+#   depends_on              = [time_sleep.wait_120_seconds]
 # }
 # #Create Target Group for Load Balancer
 # resource "aws_lb_target_group" "PCJEU2-TG" {
@@ -668,10 +669,12 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
   tags = {
     Name = "${local.name}-LC"
   }
+}
 
-  depends_on = [
-    aws_security_group.PCJEU2_Docker_Host
-  ]
+#time to delay resource
+resource "time_sleep" "wait_120_seconds" {
+  depends_on = [aws_instance.PCJEU2_Docker_Host]
+  create_duration = "120s"
 }
 
 # Creating the Application Load Balancer
@@ -682,8 +685,6 @@ resource "aws_lb" "PCJEU2_lb" {
   security_groups            = [aws_security_group.PCJEU2_Docker_SG.id]
   subnets                    = [aws_subnet.PCJEU2_Pub_SN1.id, aws_subnet.PCJEU2_Pub_SN2.id]
   enable_deletion_protection = false
-
-
 
   tags = {
     name = "PCJEU2-lb"
