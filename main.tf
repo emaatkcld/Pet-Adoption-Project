@@ -350,10 +350,13 @@ resource "aws_security_group" "DB_Backend_SG" {
   }
 }
 
-resource "aws_key_pair" "capeuteam2" {
-  key_name   = "capeuteam2"
-  public_key = file("~/keypair/capeuteam2.pub")
+#Create Keypair
+resource "aws_key_pair" "CodeMan" {
+    key_name = "CodeMan"
+    public_key = file("~/Downloads/Keypair/CodeMan.pub")
+  
 }
+
 
 resource "aws_instance" "Sonarqube_Server" {
   ami                         = "ami-0f540e9f488cfa27d" #Ubuntu
