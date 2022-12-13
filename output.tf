@@ -1,5 +1,5 @@
 output "route53-nameservers" {
-  value = aws_route53_zone.PCJEU2_R53.name_servers
+  value = aws_route53_zone.Hosted_zone.name_servers
 } 
 
 output "Docker_host-public-ip" {
