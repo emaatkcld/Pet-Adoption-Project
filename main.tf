@@ -559,50 +559,6 @@ EOF
   }
 }
 
-# Database 
-resource "aws_db_instance" "PCJEU2_db" {
-  allocated_storage      = 10
-  engine                 = "mysql"
-  engine_version         = "5.7"
-  instance_class         = "db.t2.micro"
-  multi_az               = true
-  name                   = var.database
-  username               = var.db_username
-  password               = var.db_passwd
-  parameter_group_name   = "default.mysql5.7"
-  skip_final_snapshot    = true
-  vpc_security_group_ids = [aws_security_group.DB_Backend_SG.id]
-  db_subnet_group_name   = aws_db_subnet_group.pcjeu2_db_subnet_group.id
-}
-
-#Database Subnet Group 
-resource "aws_db_subnet_group" "pcjeu2_db_subnet_group" {
-  name       = "pcjeu2_db_subnet_group"
-  subnet_ids = [aws_subnet.PCJEU2_Priv_SN1.id, aws_subnet.PCJEU2_Priv_SN2.id]
-
-  tags = {
-    Name = "pcjeu2_db_subnet_group"
-  }
-}
-# Create AMI from Docker Host
-resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
-  name                    = "PCJEU2-Docker-ami"
-  source_instance_id      = aws_instance.PCJEU2_Docker_Host.id
-  snapshot_without_reboot = true
-}
-#Create Target Group for Load Balancer
-resource "aws_lb_target_group" "PCJEU2-TG" {
-  name   = "PCJEU2-TG"
-  port   = "8080"
-  vpc_id = aws_vpc.PCJEU2_VPC.id
-  health_check {
-    healthy_threshold   = 3
-    unhealthy_threshold = 5
-    interval            = 60
-    timeout             = 5
-  }
-}
-
 # # Database 
 # resource "aws_db_instance" "PCJEU2_db" {
 #   allocated_storage      = 10
@@ -628,27 +584,48 @@ resource "aws_lb_target_group" "PCJEU2-TG" {
 #     Name = "pcjeu2_db_subnet_group"
 #   }
 # }
+
 # # Create AMI from Docker Host
 # resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
 #   name                    = "PCJEU2-Docker-ami"
 #   source_instance_id      = aws_instance.PCJEU2_Docker_Host.id
 #   snapshot_without_reboot = true
+#   depends_on              = [time_sleep.wait_120_seconds]
 # }
-# #Create Target Group for Load Balancer
-# resource "aws_lb_target_group" "PCJEU2-TG" {
-#   name   = "PCJEU2-TG"
-#   port   = "8080"  
-  
-#   vpc_id = aws_vpc.PCJEU2_VPC.id
-#   health_check {
-#     healthy_threshold   = 3
-#     unhealthy_threshold = 5
-#     interval            = 60
-#     timeout             = 30
-#     # path                = "/" 
-#     # protocol    = "TCP"
+
+# #time to delay resource
+# resource "time_sleep" "wait_120_seconds" {
+#   depends_on = [aws_instance.PCJEU2_Docker_Host]
+#   create_duration = "120s"
+# }
+
+# #Launch Configuration Template
+# resource "aws_launch_configuration" "PCJEU2_LC" {
+#   name                   = "${local.name}-LC"
+#   image_id               = aws_instance.PCJEU2_Docker_Host.id
+#   instance_type          = var.instance_type
+#   key_name               = "capeuteam2"
+#   vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
+#   associate_public_ip_address = true
+
+#   tags = {
+#     Name = "${local.name}-LC"
 #   }
 # }
+
+#Create Target Group for Load Balancer
+resource "aws_lb_target_group" "PCJEU2-TG" {
+  name   = "PCJEU2-TG"
+  port   = "8080"
+  vpc_id = aws_vpc.PCJEU2_VPC.id
+  health_check {
+    healthy_threshold   = 3
+    unhealthy_threshold = 5
+    interval            = 60
+    timeout             = 5
+  }
+}
+
 # #Creat Target Group Attachment
 # resource "aws_lb_target_group_attachment" "PCJEU2-tg-attch" {
 #   target_group_arn = aws_lb_target_group.PCJEU2-TG.arn
@@ -681,4 +658,18 @@ resource "time_sleep" "wait_60_seconds" {
 
 resource "null_resource" "next" {
   depends_on = [time_sleep.wait_60_seconds]
+
+# Creating the Application Load Balancer
+resource "aws_lb" "PCJEU2_lb" {
+  name                       = "PCJEU2-lb"
+  internal                   = false
+  load_balancer_type         = "application"
+  security_groups            = [aws_security_group.PCJEU2_Docker_SG.id]
+  subnets                    = [aws_subnet.PCJEU2_Pub_SN1.id, aws_subnet.PCJEU2_Pub_SN2.id]
+  enable_deletion_protection = false
+
+  tags = {
+    name = "PCJEU2-lb"
+  }
+
 }
