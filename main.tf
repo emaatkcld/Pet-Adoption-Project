@@ -648,22 +648,21 @@ resource "aws_lb" "PCJEU2_lb" {
 }
 
 # Creating Route53 Hosted Zone
-resource "aws_route53_zone" "PCJEU2_R53" {
+resource "aws_route53_zone" "Hosted_zone" {
   name = "awaiye.com"
   tags = {
-    Environment = "PCJEU2_R53"
+    Environment = "dev"
   }
 }  
 
 # A record pointing to a load balancer
-resource "aws_route53_record" "PCJEU2_lb" {
-  zone_id = aws_route53_zone.PCJEU2_R53.id
+resource "aws_route53_record" "PCJEU2_record" {
+  zone_id = aws_route53_zone.Hosted_zone.zone_id
   name    = "awaiye.com"
   type    = "A"
   alias {
-    name                   = aws_lb.PCJEU2-alb.dns_name
-    zone_id                = aws_lb.PCJEU2-alb.zone_id
+    name                   = aws_lb.PCJEU2-lb.dns_name
+    zone_id                = aws_lb.PCJEU2-lb.zone_id
     evaluate_target_health = true
   }
 }
-
