@@ -659,6 +659,8 @@ resource "time_sleep" "wait_60_seconds" {
 resource "null_resource" "next" {
   depends_on = [time_sleep.wait_60_seconds]
 
+}
+
 # Creating the Application Load Balancer
 resource "aws_lb" "PCJEU2_lb" {
   name                       = "PCJEU2-lb"
