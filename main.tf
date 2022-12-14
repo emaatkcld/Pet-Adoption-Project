@@ -393,7 +393,7 @@ sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config
 sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
 sudo service sshd reload
 sudo chmod -R 700 .ssh/
-sudo chmod 600 .ssh/authorize_Keys
+sudo chmod 600 .ssh/authorized_keys
 echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/newrelic-infra.yml
 sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://downloads.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
 sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
@@ -559,59 +559,17 @@ EOF
   }
 }
 
-# # Database 
-# resource "aws_db_instance" "PCJEU2_db" {
-#   allocated_storage      = 10
-#   engine                 = "mysql"
-#   engine_version         = "5.7"
-#   instance_class         = "db.t2.micro"
-#   multi_az               = true
-#   name                   = var.database
-#   username               = var.db_username
-#   password               = var.db_passwd
-#   parameter_group_name   = "default.mysql5.7"
-#   skip_final_snapshot    = true
-#   vpc_security_group_ids = [aws_security_group.DB_Backend_SG.id]
-#   db_subnet_group_name   = aws_db_subnet_group.pcjeu2_db_subnet_group.id
-# }
 
-# #Database Subnet Group 
-# resource "aws_db_subnet_group" "pcjeu2_db_subnet_group" {
-#   name       = "pcjeu2_db_subnet_group"
-#   subnet_ids = [aws_subnet.PCJEU2_Priv_SN1.id, aws_subnet.PCJEU2_Priv_SN2.id]
+##Every line of code up till this 560 support application deployment
+#All codes from 567 should be commented out before the first apply.
+#After application deployment phase, uncomment after deployment to proceed to HA
+# Create AMI from Docker Host
+resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
+  name                    = "PCJEU2-Docker-ami"
+  source_instance_id      = aws_instance.PCJEU2_Docker_Host.id
+  snapshot_without_reboot = true
+  }
 
-#   tags = {
-#     Name = "pcjeu2_db_subnet_group"
-#   }
-# }
-
-# # Create AMI from Docker Host
-# resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
-#   name                    = "PCJEU2-Docker-ami"
-#   source_instance_id      = aws_instance.PCJEU2_Docker_Host.id
-#   snapshot_without_reboot = true
-#   depends_on              = [time_sleep.wait_120_seconds]
-# }
-
-# #time to delay resource
-# resource "time_sleep" "wait_120_seconds" {
-#   depends_on = [aws_instance.PCJEU2_Docker_Host]
-#   create_duration = "120s"
-# }
-
-# #Launch Configuration Template
-# resource "aws_launch_configuration" "PCJEU2_LC" {
-#   name                   = "${local.name}-LC"
-#   image_id               = aws_instance.PCJEU2_Docker_Host.id
-#   instance_type          = var.instance_type
-#   key_name               = "capeuteam2"
-#   vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
-#   associate_public_ip_address = true
-
-#   tags = {
-#     Name = "${local.name}-LC"
-#   }
-# }
 
 #Create Target Group for Load Balancer
 resource "aws_lb_target_group" "PCJEU2-TG" {
@@ -626,43 +584,16 @@ resource "aws_lb_target_group" "PCJEU2-TG" {
   }
 }
 
-# #Creat Target Group Attachment
-# resource "aws_lb_target_group_attachment" "PCJEU2-tg-attch" {
-#   target_group_arn = aws_lb_target_group.PCJEU2-TG.arn
-#   target_id        = aws_instance.PCJEU2_Docker_Host.id
-#   port             = 8080
-# }
-
-#Lunch Configuration Template
-resource "aws_launch_configuration" "PCJEU2_LC" {
-  name                   = "${local.name}-LC"
-  image_id               = aws_instance.PCJEU2_Docker_Host.id
-  instance_type          = var.instance_type
-  key_name               = "capeuteam2"
-  vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
-  #associate_public_ip_address = true
-
-  tags = {
-    Name = "${local.name}-LC"
-  }
-
-  depends_on = [
-    aws_security_group.PCJEU2_Docker_SG
-  ]
-}
-#time to delay resource
-resource "time_sleep" "wait_60_seconds" {
-  depends_on = [aws_instance.PCJEU2_Docker_Host]
-  create_duration = "60s"
+#Creat Target Group Attachment
+resource "aws_lb_target_group_attachment" "PCJEU2-tg-attch" {
+  target_group_arn = aws_lb_target_group.PCJEU2-TG.arn
+  target_id        = aws_instance.PCJEU2_Docker_Host.id
+  port             = 8080
 }
 
-resource "null_resource" "next" {
-  depends_on = [time_sleep.wait_60_seconds]
-
-}
 
 # Creating the Application Load Balancer
-resource "aws_lb" "PCJEU2_lb" {
+resource "aws_lb" "PCJEU2-lb" {
   name                       = "PCJEU2-lb"
   internal                   = false
   load_balancer_type         = "application"
@@ -674,4 +605,22 @@ resource "aws_lb" "PCJEU2_lb" {
     name = "PCJEU2-lb"
   }
 
+}
+
+#Lunch Configuration Template
+resource "aws_launch_configuration" "PCJEU2_LC" {
+  name                   = "${local.name}-LC"
+  image_id               = aws_instance.PCJEU2_Docker_Host.id
+  instance_type          = var.instance_type
+  key_name               = "capeuteam2"
+  vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
+  associate_public_ip_address = true
+
+  tags = {
+    Name = "${local.name}-LC"
+  }
+
+  depends_on = [
+    aws_security_group.PCJEU2_Docker_SG
+  ]
 }
