@@ -633,6 +633,34 @@ resource "aws_lb_target_group" "PCJEU2-TG" {
 #   port             = 8080
 # }
 
+#Lunch Configuration Template
+resource "aws_launch_configuration" "PCJEU2_LC" {
+  name                   = "${local.name}-LC"
+  image_id               = aws_instance.PCJEU2_Docker_Host.id
+  instance_type          = var.instance_type
+  key_name               = "capeuteam2"
+  vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
+  #associate_public_ip_address = true
+
+  tags = {
+    Name = "${local.name}-LC"
+  }
+
+  depends_on = [
+    aws_security_group.PCJEU2_Docker_SG
+  ]
+}
+#time to delay resource
+resource "time_sleep" "wait_60_seconds" {
+  depends_on = [aws_instance.PCJEU2_Docker_Host]
+  create_duration = "60s"
+}
+
+resource "null_resource" "next" {
+  depends_on = [time_sleep.wait_60_seconds]
+
+}
+
 # Creating the Application Load Balancer
 resource "aws_lb" "PCJEU2_lb" {
   name                       = "PCJEU2-lb"
@@ -645,4 +673,5 @@ resource "aws_lb" "PCJEU2_lb" {
   tags = {
     name = "PCJEU2-lb"
   }
+
 }
