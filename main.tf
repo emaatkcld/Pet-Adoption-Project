@@ -573,7 +573,6 @@ resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
   snapshot_without_reboot = true
   }
 
-
 #Create Target Group for Load Balancer
 resource "aws_lb_target_group" "PCJEU2-TG" {
   name   = "PCJEU2-TG"
@@ -631,6 +630,7 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
 # Creating Route53 Hosted Zone
 resource "aws_route53_zone" "Hosted_zone" {
   name = "awaiye.com"
+  
   tags = {
     Environment = "dev"
   }
