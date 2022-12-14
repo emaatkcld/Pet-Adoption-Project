@@ -396,7 +396,7 @@ sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config
 sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
 sudo service sshd reload
 sudo chmod -R 700 .ssh/
-sudo chmod 600 .ssh/authorize_Keys
+sudo chmod 600 .ssh/authorized_keys
 echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/newrelic-infra.yml
 sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://downloads.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
 sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
@@ -637,7 +637,7 @@ resource "aws_lb_target_group" "PCJEU2-TG" {
 # }
 
 # Creating the Application Load Balancer
-resource "aws_lb" "PCJEU2_lb" {
+resource "aws_lb" "PCJEU2-lb" {
   name                       = "PCJEU2-lb"
   internal                   = false
   load_balancer_type         = "application"
