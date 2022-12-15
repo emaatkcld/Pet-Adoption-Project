@@ -555,7 +555,7 @@ cat << EOT > /opt/docker/newrelic.yml
 EOT
 EOF
   tags = {
-    NAME = "${local.name}-Ansible_Node"
+    Name = "${local.name}-Ansible_Node"
   }
 }
 
@@ -613,16 +613,12 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
   image_id                    = aws_instance.PCJEU2_Docker_Host.id
   instance_type               = var.instance_type
   key_name                    = "capeuteam2"
-  vpc_security_group_ids      = [aws_security_group.PCJEU2_LC_SG.id]
+  security_groups             = [aws_security_group.PCJEU2_Docker_SG.id]
   associate_public_ip_address = true
   user_data                   = <<-EOF
   #!/bin/bash
   sudo docker restart pet-adoption-container
   EOF
-
-  tags = {
-    Name = "${local.name}-LC"
-  }
 
   depends_on = [
     aws_security_group.PCJEU2_Docker_SG
@@ -630,7 +626,7 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
 }
 
 #Create AutoScaling Group
-resource "aws_auto_scaling_group" "PCJEU2-ASG" {
+resource "aws_autoscaling_group" "PCJEU2-ASG" {
   name                      = "${local.name}-ASG"
   max_size                  = 5
   min_size                  = 2
@@ -638,8 +634,8 @@ resource "aws_auto_scaling_group" "PCJEU2-ASG" {
   health_check_type         = "ELB"
   desired_capacity          = 3
   force_delete              = true
-  launch_configuration      = aws_launch_configuration.PCJEU2_LC
-  vpc_zone_identifier       = [aws_subnet.PCJEU2_Pub_SN1, aws_subnet.PCJEU2_Pub_SN2, ]
+  launch_configuration      = aws_launch_configuration.PCJEU2_LC.name
+  #vpc_zone_identifier       = [aws_subnet.PCJEU2_Pub_SN1, aws_subnet.PCJEU2_Pub_SN2, ]
 
 }
 
@@ -650,7 +646,7 @@ resource "aws_autoscaling_policy" "PCJEU2-ASG-Policy" {
   policy_type            = "TargetTrackingScaling"
   adjustment_type        = "ChangeInCapacity"
   cooldown               = 120
-  autoscaling_group_name = aws_autoscaling_group.PCJEU2-ASG
+  autoscaling_group_name = aws_autoscaling_group.PCJEU2-ASG.name
   target_tracking_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ASGAverageCPUUtilization"
@@ -662,12 +658,13 @@ resource "aws_autoscaling_policy" "PCJEU2-ASG-Policy" {
 
 # Create Load Balancer Listener for Docker
 resource "aws_lb_listener" "PCJEU2_lb_listener" {
-  load_balancer_arn = aws_lb.PCJEU2-lb_listener.arn
+  load_balancer_arn = aws_lb.PCJEU2-lb.arn
+  #load_balancer_arn = aws_lb.PCJEU2-lb_listener.arn
   port              = "80"
   protocol          = "HTTP"
-  load_balancer_arn = aws_lb.PCJEU2_lb_listener.arn
-  port              = "80"
-  protocol          = "HTTPS"
+  #load_balancer_arn = aws_lb.PCJEU2_lb_listener.arn
+  #port              = "80"
+  #protocol          = "HTTPS"
 
 
   default_action {
