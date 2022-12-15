@@ -627,9 +627,9 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
 
 # Create Load Balancer Listener for Docker
 resource "aws_lb_listener" "PCJEU2_lb_listener" {
-  load_balancer_arn = aws_lb.PCJEU2_lb_listener.arn
+  load_balancer_arn = aws_lb.PCJEU2-lb_listener.arn
   port              = "80"
-  protocol          = "HTTPS"
+  protocol          = "HTTP"
   #ssl_policy        = "ELBSecurityPolicy-2016-08"
   #certificate_arn   = "arn:aws:iam::187416307283:server-certificate/test_cert_rab3wuqwgja25ct3n4jdj2tzu4"
 
