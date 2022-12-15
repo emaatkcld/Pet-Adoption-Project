@@ -563,7 +563,7 @@ resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
   name                    = "PCJEU2-Docker-ami"
   source_instance_id      = aws_instance.PCJEU2_Docker_Host.id
   snapshot_without_reboot = true
-  }
+}
 
 #Create Target Group for Load Balancer
 resource "aws_lb_target_group" "PCJEU2-TG" {
@@ -603,12 +603,17 @@ resource "aws_lb" "PCJEU2-lb" {
 
 #Lunch Configuration Template
 resource "aws_launch_configuration" "PCJEU2_LC" {
-  name                   = "${local.name}-LC"
-  image_id               = aws_instance.PCJEU2_Docker_Host.id
-  instance_type          = var.instance_type
-  key_name               = "capeuteam2"
-  vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
+  name                        = "${local.name}-LC"
+  image_id                    = aws_instance.PCJEU2_Docker_Host.id
+  instance_type               = var.instance_type
+  key_name                    = "capeuteam2"
+  vpc_security_group_ids      = [aws_security_group.PCJEU2_LC_SG.id]
   associate_public_ip_address = true
+  user_data                   = <<-EOF
+  #!/bin/bash
+  sudo docker restart pet-adoption-container
+  EOF
+
   tags = {
     Name = "${local.name}-LC"
   }
@@ -638,3 +643,52 @@ resource "aws_route53_record" "PCJEU2_record" {
     evaluate_target_health = true
   }
 }
+
+#Create AutoScaling Group
+resource "aws_auto_scaling_group" "PCJEU2_ASG" {
+  name                      = "${local.name}-ASG"
+  max_size                  = 5
+  min_size                  = 2
+  health_check_grace_period = 120
+  health_check_type         = "ELB"
+  desired_capacity          = 3
+  force_delete              = true
+  launch_configuration      = aws_launch_configuration.PCJEU2_LC
+  vpc_zone_identifier       = [aws_subnet.PCJEU2_Pub_SN1, aws_subnet.PCJEU2_Pub_SN2, ]
+
+}
+
+#Create ASG Policy
+resource "aws_autoscaling_policy" "PCJEU2-ASG-Policy" {
+  name                   = "${local.name}-ASG-Pol"
+  scaling_adjustment     = 4
+  policy_type            = "TargetTrackingScaling"
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 120
+  autoscaling_group_name = aws_autoscaling_group.bar.name
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value = 30.0
+  }
+}
+
+# Create Load Balancer Listener for Docker
+resource "aws_lb_listener" "PCJEU2_lb_listener" {
+  load_balancer_arn = aws_lb.PCJEU2-lb_listener.arn
+  port              = "80"
+  protocol          = "HTTP"
+  load_balancer_arn = aws_lb.PCJEU2_lb_listener.arn
+  port              = "80"
+  protocol          = "HTTPS"
+
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.PCJEU2-TG.arn
+  }
+}
+
+
