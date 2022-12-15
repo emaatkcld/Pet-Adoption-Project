@@ -630,7 +630,7 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
 }
 
 #Create AutoScaling Group
-resource "aws_auto_scaling_group" "PCJEU2_ASG" {
+resource "aws_auto_scaling_group" "PCJEU2-ASG" {
   name                      = "${local.name}-ASG"
   max_size                  = 5
   min_size                  = 2
@@ -650,7 +650,7 @@ resource "aws_autoscaling_policy" "PCJEU2-ASG-Policy" {
   policy_type            = "TargetTrackingScaling"
   adjustment_type        = "ChangeInCapacity"
   cooldown               = 120
-  autoscaling_group_name = aws_autoscaling_group.bar.name
+  autoscaling_group_name = aws_autoscaling_group.PCJEU2-ASG
   target_tracking_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ASGAverageCPUUtilization"
