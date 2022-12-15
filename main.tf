@@ -643,3 +643,34 @@ resource "aws_auto_scaling_group" "PCJEU2_ASG" {
 
 }
 
+#Create ASG Policy
+resource "aws_autoscaling_policy" "PCJEU2-ASG-Policy" {
+  name                   = "${local.name}-ASG-Pol"
+  scaling_adjustment     = 4
+  policy_type            = "TargetTrackingScaling"
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 120
+  autoscaling_group_name = aws_autoscaling_group.bar.name
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value = 30.0
+  }
+}
+
+# Create Load Balancer Listener for Docker
+resource "aws_lb_listener" "PCJEU2_lb_listener" {
+  load_balancer_arn = aws_lb.PCJEU2_lb_listener.arn
+  port              = "80"
+  protocol          = "HTTPS"
+  #ssl_policy        = "ELBSecurityPolicy-2016-08"
+  #certificate_arn   = "arn:aws:iam::187416307283:server-certificate/test_cert_rab3wuqwgja25ct3n4jdj2tzu4"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.PCJEU2-TG.arn
+  }
+}
+
