@@ -350,11 +350,6 @@ resource "aws_security_group" "DB_Backend_SG" {
   }
 }
 
-resource "aws_key_pair" "capeuteam2" {
-  key_name   = "capeuteam2"
-  public_key = file("~/keypair/capeuteam2.pub")
-}
-
 resource "aws_instance" "Sonarqube_Server" {
   ami                         = "ami-0f540e9f488cfa27d" #Ubuntu
   instance_type               = "t2.medium"
@@ -570,7 +565,6 @@ resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
   snapshot_without_reboot = true
 }
 
-
 #Create Target Group for Load Balancer
 resource "aws_lb_target_group" "PCJEU2-TG" {
   name   = "PCJEU2-TG"
@@ -629,6 +623,27 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
   ]
 }
 
+# Creating Route53 Hosted Zone
+resource "aws_route53_zone" "Hosted_zone" {
+  name = "awaiye.com"
+
+  tags = {
+    Environment = "dev"
+  }
+}  
+
+# A record pointing to a load balancer
+resource "aws_route53_record" "PCJEU2_record" {
+  zone_id = aws_route53_zone.Hosted_zone.zone_id
+  name    = "awaiye.com"
+  type    = "A"
+  alias {
+    name                   = aws_lb.PCJEU2-lb.dns_name
+    zone_id                = aws_lb.PCJEU2-lb.zone_id
+    evaluate_target_health = true
+  }
+}
+
 #Create AutoScaling Group
 resource "aws_auto_scaling_group" "PCJEU2_ASG" {
   name                      = "${local.name}-ASG"
@@ -675,4 +690,5 @@ resource "aws_lb_listener" "PCJEU2_lb_listener" {
     target_group_arn = aws_lb_target_group.PCJEU2-TG.arn
   }
 }
+
 

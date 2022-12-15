@@ -1,3 +1,7 @@
+output "route53-nameservers" {
+  value = aws_route53_zone.Hosted_zone.name_servers
+} 
+
 output "Docker_host-public-ip" {
   value = aws_instance.PCJEU2_Docker_Host.public_ip
 }
