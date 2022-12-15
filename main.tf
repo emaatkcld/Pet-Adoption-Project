@@ -350,14 +350,6 @@ resource "aws_security_group" "DB_Backend_SG" {
   }
 }
 
-#Create Keypair
-resource "aws_key_pair" "CodeMan" {
-    key_name = "CodeMan"
-    public_key = file("~/Downloads/Keypair/CodeMan.pub")
-  
-}
-
-
 resource "aws_instance" "Sonarqube_Server" {
   ami                         = "ami-0f540e9f488cfa27d" #Ubuntu
   instance_type               = "t2.medium"
@@ -617,7 +609,6 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
   key_name               = "capeuteam2"
   vpc_security_group_ids = [aws_security_group.PCJEU2_LC_SG.id]
   associate_public_ip_address = true
-
   tags = {
     Name = "${local.name}-LC"
   }
@@ -630,7 +621,7 @@ resource "aws_launch_configuration" "PCJEU2_LC" {
 # Creating Route53 Hosted Zone
 resource "aws_route53_zone" "Hosted_zone" {
   name = "awaiye.com"
-  
+
   tags = {
     Environment = "dev"
   }
