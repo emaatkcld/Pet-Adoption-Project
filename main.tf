@@ -186,6 +186,14 @@ resource "aws_security_group" "PCJEU2_Docker_SG" {
     cidr_blocks = [var.all_access]
   }
 
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.proxxy_port
+    to_port     = var.proxxy_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -362,7 +370,13 @@ resource "aws_instance" "Sonarqube_Server" {
   vpc_security_group_ids      = ["${aws_security_group.PCJEU2_Sonarqube_SG.id}"]
   associate_public_ip_address = true
   subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
-  user_data                   = file("userdata.tpl")
+  #user_data                   = file("userdata.tpl")
+  user_data = <<-EOF
+  #!/bin/bash 
+  sudo apt update -y
+  sudo apt install docker.io -y
+  sudo docker run -itd --name sonar-container -p 9000:9000 sonarqube
+  EOF
 
   tags = {
     Name = "${local.name}-Sonarqube_Server"
@@ -387,8 +401,9 @@ sudo yum install docker-ce -y
 sudo systemctl start docker
 sudo systemctl enable docker
 sudo usermod -aG docker ec2-user
-sudo su
+sudo -i
 echo admin123 | passwd ec2-user --stdin
+echo "ec2-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config
 sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
 sudo service sshd reload
@@ -432,6 +447,8 @@ resource "aws_instance" "PCJEU2_Ansible_Node" {
 sudo yum update -y
 sudo yum install python3 python3-pip -y
 pip install ansible --user
+sudo dnf -y install https://dl.fedoraproject.org/epel/epel-release-latest-8.noarch.rpm
+sudo yum install ansible - y
 sudo chown ec2-user:ec2-user /etc/ansible
 sudo yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/sshpass-1.06-2.el7.x86_64.rpm
 sudo yum install sshpass -y
@@ -448,7 +465,7 @@ sudo chmod -R 700 .ssh/
 sudo chown -R ec2-user:ec2-user .ssh/
 sudo su - ec2-user -c "ssh-keygen -f ~/.ssh/capeuteam2 -t rsa -N ''"
 sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config'
-sudo su - ec2-user -c 'sshpass -p "Admin123@" ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@${aws_instance.PCJEU2_Docker_Host.public_ip} -p 22'
+sudo su - ec2-user -c 'sshpass -p "admin123" ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@${aws_instance.PCJEU2_Docker_Host.public_ip} -p 22'
 ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@localhost -p 22
 sudo yum install -y yum-utils
 sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
@@ -660,8 +677,8 @@ resource "aws_autoscaling_policy" "PCJEU2-ASG-Policy" {
 resource "aws_lb_listener" "PCJEU2_lb_listener" {
   load_balancer_arn = aws_lb.PCJEU2-lb.arn
   #load_balancer_arn = aws_lb.PCJEU2-lb_listener.arn
-  port              = "80"
-  protocol          = "HTTP"
+  port     = "80"
+  protocol = "HTTP"
   #load_balancer_arn = aws_lb.PCJEU2_lb_listener.arn
   #port              = "80"
   #protocol          = "HTTPS"

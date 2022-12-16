@@ -149,6 +149,10 @@ variable "ssh_port" {
   default     = 22
   description = "this port allows ssh access"
 }
+variable "ssh_port" {
+  default     = 9000
+  description = "this port allows proxxy access"
+}
 
 # Database 
 
