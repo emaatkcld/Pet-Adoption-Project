@@ -144,6 +144,14 @@ resource "aws_security_group" "PCJEU2_Ansible_SG" {
     cidr_blocks = [var.all_access]
   }
 
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.http_port
+    to_port     = var.http_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -278,6 +286,14 @@ resource "aws_security_group" "PCJEU2_Sonarqube_SG" {
     cidr_blocks = [var.all_access]
   }
 
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.proxxy_port
+    to_port     = var.proxxy_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -359,11 +375,11 @@ resource "aws_security_group" "DB_Backend_SG" {
 }
 
 resource "aws_instance" "Sonarqube_Server" {
-  ami                         = "ami-0f540e9f488cfa27d" #Ubuntu
-  instance_type               = "t2.medium"
-  key_name                    = "capeuteam2"
-  vpc_security_group_ids      = ["${aws_security_group.PCJEU2_Sonarqube_SG.id}"]
+  ami                         = var.ami
   associate_public_ip_address = true
+  instance_type               = var.instance_type
+  key_name                    = var.instance_keypair
+  vpc_security_group_ids      = ["${aws_security_group.PCJEU2_Sonarqube_SG.id}"]
   subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
   #user_data                   = file("userdata.tpl")
   user_data = <<-EOF
@@ -380,49 +396,71 @@ resource "aws_instance" "Sonarqube_Server" {
 
 # Create Docker Host 
 resource "aws_instance" "PCJEU2_Docker_Host" {
-  ami                         = "ami-023cd3f0d10fb8a9c"
+  ami                         = var.ami
   associate_public_ip_address = true
-  instance_type               = "t2.medium"
-  key_name                    = "capeuteam2"
+  instance_type               = var.instance_type
+  key_name                    = var.instance_keypair
   subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
   vpc_security_group_ids      = [aws_security_group.PCJEU2_Docker_SG.id]
   user_data                   = <<-EOF
-#!/bin/bash
-sudo yum update -y
-sudo yum upgrade -y
-sudo yum install -y yum-utils
-sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-sudo yum install docker-ce -y
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo usermod -aG docker ec2-user
-sudo -i
-echo admin123 | passwd ec2-user --stdin
-echo "ec2-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config
-sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-sudo service sshd reload
-sudo chmod -R 700 .ssh/
-sudo chmod 600 .ssh/authorized_keys
-echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/newrelic-infra.yml
-sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://downloads.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
-sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
-sudo yum install newrelic-infra -y
-EOF
+  #!/bin/bash
+  sudo apt-get update -y
+  sudo apt-get upgrade -y
+  sudo apt-get install docker.io -y
+  sudo systemctl start docker
+  sudo systemctl enable docker
+  sudo usermod -aG docker ubuntu
+  sudo -i
+  echo admin123 | passwd ubuntu --stdin
+  echo "ubuntu ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+  sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config'
+  sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  sudo service sshd reload
+  sudo chmod -R 700 .ssh/
+  sudo chmod 600 .ssh/authorized_keys
+  # echo "license_key: 19934c8af59dee4336ee880bff8a7f28c60cNRAL" | sudo tee -a /etc/newrelic-infra.yml
+  # sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://downloads.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
+  # sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
+  # sudo yum install newrelic-infra -y
+  EOF
   tags = {
-    NAME = "${local.name}-Docker_Host"
+    Name = "${local.name}-Docker_Host"
   }
 }
 
 #create Jenkins server
 resource "aws_instance" "jenkins_instance" {
-  ami                         = "ami-023cd3f0d10fb8a9c"
-  instance_type               = "t2.micro"
-  key_name                    = "capeuteam2"
+  ami                         = var.ami
+  associate_public_ip_address = true
+  instance_type               = var.instance_type
+  key_name                    = var.instance_keypair
   subnet_id                   = aws_subnet.PCJEU2_Pub_SN2.id
   vpc_security_group_ids      = [aws_security_group.PCJEU2_Jenkins_SG.id]
-  associate_public_ip_address = true
-  user_data                   = file("userdata2.tpl")
+  user_data = <<-EOF
+  #!/bin/bash
+  sudo apt-get update -y
+  sudo apt-get install wget -y
+  sudo apt-get install maven -y
+  sudo apt-get install git -y
+  sudo apt-get install default-jre -y
+  sudo wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+  sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+  sudo apt-get upgrade -y
+  sudo apt-get update -y
+  sudo apt-get install jenkins -y
+  sudo su - ubuntu -c "ssh-keygen -f ~/.ssh/jenkins-key -t rsa -b 4096 -m PEM -N ''" 
+  cat ~/.ssh/jenkins-key.pub | ssh ubuntu@${aws_instance.PCJEU2_Ansible_Node.public_ip} "cat >> ~/.ssh/authorized_keys"
+  sudo systemctl start jenkins
+  sudo systemctl enable jenkins
+  sudo systemctl status jenkins
+  sudo apt-config-manager --add-repo https://download.docker.com/linux/ubutu/docker-ce.repo
+  sudo apt-get install docker.io -y
+  sudo systemctl start docker
+  sudo systemctl enable docker
+  sudo usermod -aG docker ubuntu
+  sudo usermod -aG docker jenkins
+  sudo hostnamectl set-hostname Jenkins
+  EOF
 
   tags = {
     Name = "${local.name}-jenkins_instance"
@@ -431,146 +469,274 @@ resource "aws_instance" "jenkins_instance" {
 
 # Create EC2 Instance for Ansible Node
 resource "aws_instance" "PCJEU2_Ansible_Node" {
-  ami                         = "ami-023cd3f0d10fb8a9c"
+  ami                         = var.ami
   associate_public_ip_address = true
-  instance_type               = "t2.medium"
-  key_name                    = "capeuteam2"
+  instance_type               = var.instance_type
+  key_name                    = var.instance_keypair
   subnet_id                   = aws_subnet.PCJEU2_Pub_SN1.id
   vpc_security_group_ids      = [aws_security_group.PCJEU2_Ansible_SG.id]
   user_data                   = <<-EOF
-#!/bin/bash
-sudo yum update -y
-sudo yum install python3 python3-pip -y
-pip install ansible --user
-sudo dnf -y install https://dl.fedoraproject.org/epel/epel-release-latest-8.noarch.rpm
-sudo yum install ansible - y
-sudo chown ec2-user:ec2-user /etc/ansible
-sudo yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/sshpass-1.06-2.el7.x86_64.rpm
-sudo yum install sshpass -y
-echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/newrelic-infra.yml
-sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
-sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
-sudo yum install newrelic-infra -y
-sudo -i
-echo admin123 | passwd ec2-user --stdin
-echo "ec2-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-sudo service sshd reload
-sudo chmod -R 700 .ssh/
-sudo chown -R ec2-user:ec2-user .ssh/
-sudo su - ec2-user -c "ssh-keygen -f ~/.ssh/capeuteam2 -t rsa -N ''"
-sudo bash -c ' echo "strictHostKeyChecking No" >> /etc/ssh/ssh_config'
-sudo su - ec2-user -c 'sshpass -p "admin123" ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@${aws_instance.PCJEU2_Docker_Host.public_ip} -p 22'
-ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@localhost -p 22
-sudo yum install -y yum-utils
-sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-sudo yum install docker-ce -y
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo usermod -aG docker ec2-user
-cd /etc
-sudo chown ec2-user:ec2-user hosts
-cat <<EOT>> /etc/ansible/hosts
-localhost ansible_connection=local
-[docker_host]
-${aws_instance.PCJEU2_Docker_Host.public_ip} ansible_ssh_private_key_file=/home/ec2-user/.ssh/capeuteam2
-EOT
-sudo mkdir /opt/docker
-sudo chown -R ec2-user:ec2-user /opt/docker
-sudo chmod -R 700 /opt/docker
-touch /opt/docker/Dockerfile
-cat <<EOT>> /opt/docker/Dockerfile
-# pull tomcat image from docker hub
-FROM tomcat
-FROM openjdk:8-jre-slim
-#copy war file on the container
-COPY spring-petclinic-2.4.2.war app/
-WORKDIR app/
-RUN pwd
-RUN ls -al
-ENTRYPOINT [ "java", "-jar", "spring-petclinic-2.4.2.war", "--server.port=8085"]
-EOT
-touch /opt/docker/docker-image.yml
-cat <<EOT>> /opt/docker/docker-image.yml
----
- - hosts: localhost
-  #root access to user
-   become: true
+  #!/bin/bash
+  sudo apt-get update -y 
+  sudo apt-add-repository ppa:ansible/ansible 
+  sudo apt-get install ansible -y
+  sudo apt-get install sshpass -y
+  sudo -i
+  #echo admin123 | passwd ubuntu --stdin
+  #echo "ubuntu ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+  #sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  #sudo service sshd reload
 
-   tasks:
-   - name: login to dockerhub
-     command: docker login -u cloudhight -p CloudHight_Admin123@
+  #################################################################################################
+  #either create a key and copy the .pub of the key into the docker server or
+  #copy the private key with which you ssh into ansible into the other servers you would want to connect with
+  #################################################################################################
 
-   - name: Create docker image from Pet Adoption war file
-     command: docker build -t pet-adoption-image .
-     args:
-       chdir: /opt/docker
+  echo "${file(var.key)}" >> ~/.ssh/id_rsa
+  # sudo su - ubuntu -c "ssh-keygen -f ~/.ssh/ansible-key -t rsa -N ''"
+  # sudo bash -c ' echo "strictHostKeyChecking=No" >> /etc/ssh/ssh_config'
+  # sudo su - ubuntu -c 'sshpass -p "admin123" ssh-copy-id -i /home/ubuntu/.ssh/ansible-key.pub ubuntu@${aws_instance.PCJEU2_Docker_Host.public_ip} -p 22'
+  # sudo ssh-copy-id -i /home/ubuntu/.ssh/ansible-key.pub ubuntu@localhost -p 22
+  sudo apt-get install docker.io -y
+  sudo systemctl start docker
+  sudo systemctl enable docker
+  sudo usermod -aG docker ubuntu
+  cd /etc
+  sudo chown ubuntu:ubuntu hosts
+  cat <<EOT>> /etc/ansible/hosts
+  localhost ansible_connection=local
+  [docker_host]
+  ${aws_instance.PCJEU2_Docker_Host.public_ip} ansible_ssh_private_key_file=/home/ubuntu/.ssh/ansible-key
+  EOT
+  sudo mkdir /opt/docker
+  sudo chown -R ubuntu:ubuntu /opt/docker
+  sudo chmod -R 700 /opt/docker
+  touch /opt/docker/Dockerfile
+  cat <<EOT>> /opt/docker/Dockerfile
+  # pull tomcat image from docker hub
+  FROM tomcat
+  FROM openjdk:8-jre-slim
+  #copy war file on the container
+  COPY spring-petclinic-2.4.2.war app/
+  WORKDIR app/
+  RUN pwd
+  RUN ls -al
+  ENTRYPOINT [ "java", "-jar", "spring-petclinic-2.4.2.war", "--server.port=8085"]
+  EOT
+  touch /opt/docker/docker-image.yml
+  cat <<EOT>> /opt/docker/docker-image.yml
+  ---
+   - hosts: localhost
+    #root access to user
+     become: true
 
-   - name: Add tag to image
-     command: docker tag pet-adoption-image cloudhight/pet-adoption-image
+     tasks:
+     - name: login to dockerhub
+       command: docker login -u cloudhight -p CloudHight_Admin123@
 
-   - name: Push image to docker hub
-     command: docker push cloudhight/pet-adoption-image
+     - name: Create docker image from Pet Adoption war file
+       command: docker build -t pet-adoption-image .
+       args:
+         chdir: /opt/docker
 
-   - name: Remove docker image from Ansible node
-     command: docker rmi pet-adoption-image cloudhight/pet-adoption-image
-     ignore_errors: yes
-EOT
-touch /opt/docker/docker-container.yml
-cat <<EOT>> /opt/docker/docker-container.yml
----
- - hosts: docker_host
-   become: true
+     - name: Add tag to image
+       command: docker tag pet-adoption-image cloudhight/pet-adoption-image
 
-   tasks:
-   - name: login to dockerhub
-     command: docker login -u cloudhight -p CloudHight_Admin123@
+     - name: Push image to docker hub
+       command: docker push cloudhight/pet-adoption-image
 
-   - name: Stop any container running
-     command: docker stop pet-adoption-container
-     ignore_errors: yes
+     - name: Remove docker image from Ansible node
+       command: docker rmi pet-adoption-image cloudhight/pet-adoption-image
+       ignore_errors: yes
+  EOT
+  touch /opt/docker/docker-container.yml
+  cat <<EOT>> /opt/docker/docker-container.yml
+  ---
+   - hosts: docker_host
+     become: true
 
-   - name: Remove stopped container
-     command: docker rm pet-adoption-container
-     ignore_errors: yes
+     tasks:
+     - name: login to dockerhub
+       command: docker login -u cloudhight -p CloudHight_Admin123@
 
-   - name: Remove docker image
-     command: docker rmi cloudhight/pet-adoption-image
-     ignore_errors: yes
+     - name: Stop any container running
+       command: docker stop pet-adoption-container
+       ignore_errors: yes
 
-   - name: Pull docker image from dockerhub
-     command: docker pull cloudhight/pet-adoption-image
-     ignore_errors: yes
+     - name: Remove stopped container
+       command: docker rm pet-adoption-container
+       ignore_errors: yes
 
-   - name: Create container from pet adoption image
-     command: docker run -it -d --name pet-adoption-container -p 8080:8085 cloudhight/pet-adoption-image
-     ignore_errors: yes
-EOT
-cat << EOT > /opt/docker/newrelic.yml
----
- - hosts: docker
-   become: true
+     - name: Remove docker image
+       command: docker rmi cloudhight/pet-adoption-image
+       ignore_errors: yes
 
-   tasks:
-   - name: install newrelic agent
-     command: docker run \
-                     -d \
-                     --name newrelic-infra \
-                     --network=host \
-                     --cap-add=SYS_PTRACE \
-                     --privileged \
-                     --pid=host \
-                     -v "/:/host:ro" \
-                     -v "/var/run/docker.sock:/var/run/docker.sock" \
-                     -e NRIA_LICENSE_KEY=eu01xxbca018499adedd74cacda9d3d13e7dNRAL \
-                     newrelic/infrastructure:latest
-EOT
-EOF
+     - name: Pull docker image from dockerhub
+       command: docker pull cloudhight/pet-adoption-image
+       ignore_errors: yes
+
+     - name: Create container from pet adoption image
+       command: docker run -it -d --name pet-adoption-container -p 8080:8085 cloudhight/pet-adoption-image
+       ignore_errors: yes
+  EOT
+  cat << EOT > /opt/docker/newrelic.yml
+  ---
+   - hosts: docker
+     become: true
+
+     tasks:
+     - name: install newrelic agent
+       command: docker run \
+                       -d \
+                       --name newrelic-infra \
+                       --network=host \
+                       --cap-add=SYS_PTRACE \
+                       --privileged \
+                       --pid=host \
+                       -v "/:/host:ro" \
+                       -v "/var/run/docker.sock:/var/run/docker.sock" \
+                       -e NRIA_LICENSE_KEY=19934c8af59dee4336ee880bff8a7f28c60cNRAL \
+                       newrelic/infrastructure:latest
+                       
+  EOT
+  EOF
+
   tags = {
     Name = "${local.name}-Ansible_Node"
   }
 }
 
+
+    #user_data                   = <<-EOF
+  # #!/bin/bash
+  # sudo yum update -y
+  # sudo yum install python3 python3-pip -y
+  # pip install ansible --user
+  # sudo dnf -y install https://dl.fedoraproject.org/epel/epel-release-latest-8.noarch.rpm
+  # sudo yum install ansible - y
+  # sudo chown ec2-user:ec2-user /etc/ansible
+  # sudo yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/sshpass-1.06-2.el7.x86_64.rpm
+  # sudo yum install sshpass -y
+  # echo "license_key: eu01xxbca018499adedd74cacda9d3d13e7dNRAL" | sudo tee -a /etc/newrelic-infra.yml
+  # sudo curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo
+  # sudo yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'
+  # sudo yum install newrelic-infra -y
+  # sudo -i
+  # echo admin123 | passwd ec2-user --stdin
+  # echo "ec2-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+  # sudo sed -ie 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  # sudo service sshd reload
+  # sudo chmod -R 700 .ssh/
+  # sudo chown -R ec2-user:ec2-user .ssh/
+  # sudo su - ec2-user -c "ssh-keygen -f ~/.ssh/capeuteam2 -t rsa -N ''"
+  # sudo bash -c ' echo "strictHostKeyChecking=No" >> /etc/ssh/ssh_config'
+  # sudo su - ec2-user -c 'sshpass -p "admin123" ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@${aws_instance.PCJEU2_Docker_Host.public_ip} -p 22'
+  # ssh-copy-id -i /home/ec2-user/.ssh/capeuteam2.pub ec2-user@localhost -p 22
+  # sudo yum install -y yum-utils
+  # sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  # sudo yum install docker-ce -y
+  # sudo systemctl start docker
+  # sudo systemctl enable docker
+  # sudo usermod -aG docker ec2-user
+  # cd /etc
+  # sudo chown ec2-user:ec2-user hosts
+  # cat <<EOT>> /etc/ansible/hosts
+  # localhost ansible_connection=local
+  # [docker_host]
+  # ${aws_instance.PCJEU2_Docker_Host.public_ip} ansible_ssh_private_key_file=/home/ec2-user/.ssh/capeuteam2
+  # EOT
+  # sudo mkdir /opt/docker
+  # sudo chown -R ec2-user:ec2-user /opt/docker
+  # sudo chmod -R 700 /opt/docker
+  # touch /opt/docker/Dockerfile
+  # cat <<EOT>> /opt/docker/Dockerfile
+  # # pull tomcat image from docker hub
+  # FROM tomcat
+  # FROM openjdk:8-jre-slim
+  # #copy war file on the container
+  # COPY spring-petclinic-2.4.2.war app/
+  # WORKDIR app/
+  # RUN pwd
+  # RUN ls -al
+  # ENTRYPOINT [ "java", "-jar", "spring-petclinic-2.4.2.war", "--server.port=8085"]
+  # EOT
+  # touch /opt/docker/docker-image.yml
+  # cat <<EOT>> /opt/docker/docker-image.yml
+  # ---
+  #  - hosts: localhost
+  #   #root access to user
+  #    become: true
+
+  #    tasks:
+  #    - name: login to dockerhub
+  #      command: docker login -u cloudhight -p CloudHight_Admin123@
+
+  #    - name: Create docker image from Pet Adoption war file
+  #      command: docker build -t pet-adoption-image .
+  #      args:
+  #        chdir: /opt/docker
+
+  #    - name: Add tag to image
+  #      command: docker tag pet-adoption-image cloudhight/pet-adoption-image
+
+  #    - name: Push image to docker hub
+  #      command: docker push cloudhight/pet-adoption-image
+
+  #    - name: Remove docker image from Ansible node
+  #      command: docker rmi pet-adoption-image cloudhight/pet-adoption-image
+  #      ignore_errors: yes
+  # EOT
+  # touch /opt/docker/docker-container.yml
+  # cat <<EOT>> /opt/docker/docker-container.yml
+  # ---
+  #  - hosts: docker_host
+  #    become: true
+
+  #    tasks:
+  #    - name: login to dockerhub
+  #      command: docker login -u cloudhight -p CloudHight_Admin123@
+
+  #    - name: Stop any container running
+  #      command: docker stop pet-adoption-container
+  #      ignore_errors: yes
+
+  #    - name: Remove stopped container
+  #      command: docker rm pet-adoption-container
+  #      ignore_errors: yes
+
+  #    - name: Remove docker image
+  #      command: docker rmi cloudhight/pet-adoption-image
+  #      ignore_errors: yes
+
+  #    - name: Pull docker image from dockerhub
+  #      command: docker pull cloudhight/pet-adoption-image
+  #      ignore_errors: yes
+
+  #    - name: Create container from pet adoption image
+  #      command: docker run -it -d --name pet-adoption-container -p 8080:8085 cloudhight/pet-adoption-image
+  #      ignore_errors: yes
+  # EOT
+  # cat << EOT > /opt/docker/newrelic.yml
+  # ---
+  #  - hosts: docker
+  #    become: true
+
+  #    tasks:
+  #    - name: install newrelic agent
+  #      command: docker run \
+  #                      -d \
+  #                      --name newrelic-infra \
+  #                      --network=host \
+  #                      --cap-add=SYS_PTRACE \
+  #                      --privileged \
+  #                      --pid=host \
+  #                      -v "/:/host:ro" \
+  #                      -v "/var/run/docker.sock:/var/run/docker.sock" \
+  #                      -e NRIA_LICENSE_KEY=19934c8af59dee4336ee880bff8a7f28c60cNRAL \
+  #                      newrelic/infrastructure:latest
+  # EOT
+  # EOF
+  
 
 ##Every line of code up till this 560 support application deployment
 #All codes from 567 should be commented out before the first apply.
@@ -584,9 +750,10 @@ resource "aws_ami_from_instance" "PCJEU2-Docker-ami" {
 
 #Create Target Group for Load Balancer
 resource "aws_lb_target_group" "PCJEU2-TG" {
-  name   = "PCJEU2-TG"
-  port   = "8080"
-  vpc_id = aws_vpc.PCJEU2_VPC.id
+  name     = "${local.name}-lb-alb-TG"
+  port     = "8080"
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.PCJEU2_VPC.id
   health_check {
     healthy_threshold   = 3
     unhealthy_threshold = 5
@@ -621,9 +788,9 @@ resource "aws_lb" "PCJEU2-lb" {
 #Lunch Configuration Template
 resource "aws_launch_configuration" "PCJEU2_LC" {
   name                        = "${local.name}-LC"
-  image_id                    = aws_instance.PCJEU2_Docker_Host.id
+  image_id                    = aws_ami_from_instance.PCJEU2-Docker-ami.id
   instance_type               = var.instance_type
-  key_name                    = "capeuteam2"
+  key_name                    = var.instance_keypair
   security_groups             = [aws_security_group.PCJEU2_Docker_SG.id]
   associate_public_ip_address = true
   user_data                   = <<-EOF
@@ -643,7 +810,7 @@ resource "aws_route53_zone" "Hosted_zone" {
   tags = {
     Environment = "dev"
   }
-}  
+}
 
 # A record pointing to a load balancer
 resource "aws_route53_record" "PCJEU2_record" {
@@ -667,17 +834,18 @@ resource "aws_autoscaling_group" "PCJEU2-ASG" {
   desired_capacity          = 3
   force_delete              = true
   launch_configuration      = aws_launch_configuration.PCJEU2_LC.name
-  #vpc_zone_identifier       = [aws_subnet.PCJEU2_Pub_SN1, aws_subnet.PCJEU2_Pub_SN2, ]
+  vpc_zone_identifier       = [aws_subnet.PCJEU2_Pub_SN1.id, aws_subnet.PCJEU2_Pub_SN2.id]
+  target_group_arns         = [aws_lb_target_group.PCJEU2-TG.arn]
 
 }
 
 #Create ASG Policy
 resource "aws_autoscaling_policy" "PCJEU2-ASG-Policy" {
-  name                   = "${local.name}-ASG-Pol"
-  scaling_adjustment     = 4
-  policy_type            = "TargetTrackingScaling"
-  adjustment_type        = "ChangeInCapacity"
-  cooldown               = 120
+  name = "${local.name}-ASG-Pol"
+  #scaling_adjustment     = 4
+  policy_type     = "TargetTrackingScaling"
+  adjustment_type = "ChangeInCapacity"
+  #cooldown               = 120
   autoscaling_group_name = aws_autoscaling_group.PCJEU2-ASG.name
   target_tracking_configuration {
     predefined_metric_specification {

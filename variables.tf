@@ -149,7 +149,7 @@ variable "ssh_port" {
   default     = 22
   description = "this port allows ssh access"
 }
-variable "ssh_port" {
+variable "proxxy_port" {
   default     = 9000
   description = "this port allows proxxy access"
 }
@@ -184,3 +184,20 @@ variable "instance_type" {
   type        = string
   default     = "t2.medium"
 }
+
+variable "instance_keypair" {
+  description = "AWS EC2 Key pair that need to be associated with EC2 Instance"
+  type        = string
+  default     = "capeuteam2a"
+}
+
+variable "ami" {
+  description = "Ami to be used"
+  type        = string
+  default     = "ami-07c2ae35d31367b3e"
+}
+
+variable "key" {
+  default = "~/keypair/capeuteam2a.pem"
+}
+
